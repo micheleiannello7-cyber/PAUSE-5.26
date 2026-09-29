@@ -357,3 +357,8 @@ Solo presentazione (nessuna modifica backend/contenuti):
 ## 2026-09 — Fix lettore (capitoli)
 - Un capitolo = una schermata; anticipazione compatta in fondo ("CAPITOLO 0X" + titolo, senza numero in filigrana).
 - Modalità compatta automatica se il capitolo sfora di ≤120px; quote sezioni calcolate dalle altezze (web-safe); overflow-anchor:none sul web.
+
+## 2026-09-29 — Produzione v9 (nuovi contenuti, copertina subito)
+- `backend/v9_topics.py` rivisto dopo analisi dei 430 titoli: 63 nuovi argomenti (target 40/categoria).
+- Run 1: 11 prodotti (cultura 33, economia 32, arte 32, geografia 32, corpo-umano 33) poi credito esaurito.
+- Restano 52 (51 senza testo + "oro vs rame" con testo senza copertina). Riprendere: `cd /app/backend && nohup python produce_v9.py > ../memory/v9_production_2.stdout 2>&1 &`
