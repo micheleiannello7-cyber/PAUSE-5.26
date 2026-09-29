@@ -234,7 +234,8 @@ export const categoryTilePalette = {
   accents: {
     // Una tinta distinta per categoria, coerente con l'oggetto 3D dell'icona
     // (foglia verde, chip blu, cervello rosso-corallo, tavolozza orchidea…).
-    all: "#22DFFF", scienza: "#00DFFF", spazio: "#A85AFF", tecnologia: "#4F8CFF",
+    // ESPLORA: bianco ghiaccio — tutti i colori insieme formano il bianco.
+    all: "#EAF7FF", scienza: "#00DFFF", spazio: "#A85AFF", tecnologia: "#4F8CFF",
     natura: "#00E878", animali: "#FF9A3C", storia: "#E4B76A", psicologia: "#FF5CB8",
     "corpo-umano": "#FF4D6D", cultura: "#00DAB4", economia: "#FFE14D",
     arte: "#E76BEF", geografia: "#B8F03C",
