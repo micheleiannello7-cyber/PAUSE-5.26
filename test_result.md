@@ -101,3 +101,29 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+user_problem_statement: "Reader (deep-dive) screen: chapter numbers duplicated and huge unexplained gaps. Each screen must show only the chapter being read, with the next chapter's number+title at the very bottom; keep the same snap/auto-centering logic."
+
+frontend:
+  - task: "Reader chapter sections: one chapter per screen, compact next-chapter preview, no duplicated numbers"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/reader-section.tsx, frontend/app/deep-dive/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Root causes: (1) preview reserve was a 170px estimate causing chapters to overflow by a few px → an extra almost-empty screen with the preview watermark number → 'duplicated numbers + big gaps'; (2) on web, section tops were read from layout.y which never updates when an earlier section grows (onLayout only fires on size change) → snapping to wrong offsets. Fix: compact preview (CAPITOLO 0X + title only, measured at layout), tight mode when overflow ≤120px, tops computed cumulatively from measured heights."
+
+test_plan:
+  current_focus:
+    - "Reader chapter sections"
+  stuck_tasks: []
+  test_all: false
+
+agent_communication:
+  - agent: "main"
+    message: "Please test /deep-dive/sky-blue-sunset-orange?start=1 at 360x720 and 390x844 (web). Also a category rename: topics tab 'Qualsiasi argomento' → 'ESPLORA' with subtitle 'Ogni categoria è una scoperta' (English: EXPLORE / Every category is a discovery)."
+  - agent: "main"
+    message: "Fixed iteration_1 MEDIUM issue (390x844 initial snap off by 33px): cause was Chrome scroll anchoring shifting scrollTop when a section resized after measurement; now overflow-anchor:none is set on the reader ScrollView node (web only). Please retest initial snap at 390x844 + a quick regression of wheel stepping."

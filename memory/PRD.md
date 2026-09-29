@@ -348,3 +348,12 @@ Solo presentazione (nessuna modifica backend/contenuti):
 
 ## Capitoli su più schermate senza duplicati (giugno 2026, fork)
 - Bug: con testo più alto di una schermata il passo parziale mostrava l'anticipazione "05" seguita dal vero capitolo 05. Fix `reader-section.tsx`: il capitolo misura il proprio contenuto e occupa un numero intero di schermate, `sectionH = pages*minH − (pages−1)*pageOverlap` (overlap = headerBottom + 16 così nessuna riga resta sotto la barra); anticipazione sempre in fondo all'ultima schermata. `deep-dive`: passo parziale = viewH − pageOverlap, OVERFLOW_TOL 24; apertura→cap.1 e →apertura sempre salto pieno; se l'altezza dello ScrollView cambia (barra browser) si riallinea alla sezione corrente.
+
+## 2026-09 — Categoria "ESPLORA" (ex "Qualsiasi argomento")
+- Rinominata in ESPLORA / EXPLORE, sottotitolo "Ogni categoria è una scoperta" (i18n it/en, avviso onboarding).
+- Icona 3D: script pronto `backend/generate_explore_icon.py` (Nano Banana, riferimento in `memory/icons_2026/explore-reference.png`).
+  IN ATTESA: credito Universal Key esaurito. Quando ricaricato: `python generate_explore_icon.py generate` → revisione → `python generate_explore_icon.py publish`.
+
+## 2026-09 — Fix lettore (capitoli)
+- Un capitolo = una schermata; anticipazione compatta in fondo ("CAPITOLO 0X" + titolo, senza numero in filigrana).
+- Modalità compatta automatica se il capitolo sfora di ≤120px; quote sezioni calcolate dalle altezze (web-safe); overflow-anchor:none sul web.

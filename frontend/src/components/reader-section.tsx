@@ -2,8 +2,8 @@
 // vive direttamente sul fondo, senza card. Numero del capitolo grande e quasi
 // trasparente come elemento grafico, occhiello "CAPITOLO X" nel colore del
 // tema, titolo, corpo in paragrafi brevi. Nessun contenuto extra.
-import { useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { Chapter, Story } from "@/src/api";
@@ -14,11 +14,12 @@ import { HighlightedTitle } from "@/src/components/highlighted-title";
 // una riga confortevole, su telefono usa tutta la larghezza meno i margini.
 export const READER_MAX_W = 640;
 const LONG_PARAGRAPH = 520;
-// Geometria della sezione (deve coincidere con gli stili qui sotto) e spazio
-// riservato in fondo all'anticipazione del capitolo seguente (divisore + numero + titolo su due righe).
-const SECTION_PAD_TOP = spacing.xxl + spacing.md;
-const SECTION_PAD_BOTTOM = spacing.xl;
-const PREVIEW_RESERVE = 170;
+// Geometria della sezione (deve coincidere con gli stili qui sotto).
+const NORMAL_PAD = { top: spacing.xxl + spacing.md, bottom: spacing.xl };
+const TIGHT_PAD = { top: spacing.xl, bottom: spacing.lg };
+const SECTION_GAP = spacing.sm + 2;
+// Sforo massimo (punti) oltre la schermata che la versione compatta può assorbire.
+const TIGHT_MAX_OVERFLOW = 120;
 
 // Solo presentazione: il testo resta identico, ma un capitolo molto lungo
 // viene mostrato in due paragrafi spezzati alla fine di una frase.
@@ -62,8 +63,8 @@ export function stripStepPrefix(title: string): string {
 }
 
 // Un capitolo occupa una schermata: in alto numero, occhiello, titolo e testo;
-// in fondo — se c'è un capitolo dopo — solo il suo numero e il titolo intero,
-// attenuati: un'anticipazione, mai il testo. Il capitolo successivo vero inizia
+// in fondo — se c'è un capitolo dopo — solo "CAPITOLO 02" e il suo titolo,
+// attenuati e compatti: un'anticipazione, mai il testo. Il capitolo successivo vero inizia
 // alla schermata seguente (la lettura avanza a capitoli, non a scorrimento).
 export function ChapterSection({ chapter, story, eyebrow, next, minHeight, pageOverlap = 0 }: {
   chapter: Chapter; story: Story; eyebrow: string;
@@ -84,43 +85,58 @@ export function ChapterSection({ chapter, story, eyebrow, next, minHeight, pageO
   // capitolo occupa un numero intero di schermate, così l'anticipazione resta
   // in fondo all'ultima e il capitolo seguente inizia sempre su una schermata
   // nuova — mai la stessa intestazione due volte di seguito.
+  // L'anticipazione si misura a layout (non si stima): così una schermata in
+  // più compare solo quando il testo davvero non ci sta, mai per pochi punti.
+  // Se sfora di poco, prima si prova la versione compatta (spazi e interlinea
+  // ridotti): solo se non basta il capitolo prende una schermata in più.
   const [contentH, setContentH] = useState(0);
-  const total = SECTION_PAD_TOP + contentH + (next ? PREVIEW_RESERVE : 0) + SECTION_PAD_BOTTOM;
-  const pages = minHeight && contentH > 0 ? Math.max(1, Math.ceil((total - pageOverlap) / (minHeight - pageOverlap))) : 1;
+  const [previewH, setPreviewH] = useState(0);
+  const [tight, setTight] = useState(false);
+  const pad = tight ? TIGHT_PAD : NORMAL_PAD;
+  const total = pad.top + contentH + (next ? SECTION_GAP + previewH : 0) + pad.bottom;
+  const measured = contentH > 0 && (!next || previewH > 0);
+  const overflow = minHeight && measured ? total - minHeight : 0;
+  useEffect(() => { setTight(false); }, [minHeight]);
+  useEffect(() => {
+    if (!tight && overflow > 0 && overflow <= TIGHT_MAX_OVERFLOW) setTight(true);
+  }, [tight, overflow]);
+  const pages = minHeight && measured ? Math.max(1, Math.ceil((total - pageOverlap) / (minHeight - pageOverlap))) : 1;
   const sectionH = minHeight ? pages * minHeight - (pages - 1) * pageOverlap : undefined;
   return (
-    <View style={[styles.section, sectionH ? { minHeight: sectionH } : null]} testID={`deep-dive-chapter-${chapter.number}`}>
+    <View style={[styles.section, tight && styles.sectionTight, sectionH ? { minHeight: sectionH } : null]} testID={`deep-dive-chapter-${chapter.number}`}>
       <View style={styles.content} onLayout={(e) => { const h = Math.ceil(e.nativeEvent.layout.height); if (h !== contentH) setContentH(h); }}>
       <View>
         {/* Numero grande e quasi trasparente: elemento grafico, non informazione. */}
-        <Text style={[styles.bigNumber, { color: withAlpha(tint, 0.13) }]} pointerEvents="none" testID={`reader-chapter-number-${chapter.number}`}>{number}</Text>
-        <Text style={[styles.eyebrow, { color: tint }]} testID={`reader-chapter-eyebrow-${chapter.number}`}>{eyebrow.toUpperCase()}</Text>
+        <Text style={[styles.bigNumber, tight && styles.bigNumberTight, { color: withAlpha(tint, 0.13) }]} pointerEvents="none" testID={`reader-chapter-number-${chapter.number}`}>{number}</Text>
+        <Text style={[styles.eyebrow, tight && styles.eyebrowTight, { color: tint }]} testID={`reader-chapter-eyebrow-${chapter.number}`}>{eyebrow.toUpperCase()}</Text>
         <HighlightedTitle
           title={stripStepPrefix(chapter.title)}
           highlight={story.highlight_words}
           highlightColor={tint}
-          style={styles.title}
+          style={[styles.title, tight && styles.titleTight]}
         />
       </View>
-      <View style={styles.body}>
+      <View style={[styles.body, tight && styles.bodyTight]}>
         {splitParagraphs(chapter.body).map((p, i) => (
-          <Text key={i} style={styles.paragraph}>{p}</Text>
+          <Text key={i} style={[styles.paragraph, tight && styles.paragraphTight]}>{p}</Text>
         ))}
       </View>
       </View>
       {next ? (
-        <View style={styles.preview} testID={`reader-chapter-preview-${next.number}`}>
+        // Anticipazione compatta: solo numero e titolo del capitolo seguente
+        // (niente numero grande in filigrana: quello appartiene al capitolo vero).
+        <View style={[styles.preview, tight && styles.previewTight]} testID={`reader-chapter-preview-${next.number}`}
+          onLayout={(e) => { const h = Math.ceil(e.nativeEvent.layout.height); if (h !== previewH) setPreviewH(h); }}>
           <SectionDivider color={tint} />
-          <View style={styles.previewHead}>
-            <Text style={[styles.previewNumber, { color: withAlpha(tint, 0.1) }]} pointerEvents="none">{String(next.number).padStart(2, "0")}</Text>
-            <Text style={[styles.eyebrow, styles.previewEyebrow, { color: withAlpha(tint, 0.55) }]}>{eyebrow.toUpperCase()}</Text>
-            <HighlightedTitle
-              title={stripStepPrefix(next.title)}
-              highlight={story.highlight_words}
-              highlightColor={withAlpha(tint, 0.55)}
-              style={[styles.title, styles.previewTitle]}
-            />
-          </View>
+          <Text style={[styles.eyebrow, styles.previewEyebrow, { color: withAlpha(tint, 0.6) }]} testID={`reader-chapter-preview-number-${next.number}`}>
+            {eyebrow.toUpperCase()} {String(next.number).padStart(2, "0")}
+          </Text>
+          <HighlightedTitle
+            title={stripStepPrefix(next.title)}
+            highlight={story.highlight_words}
+            highlightColor={withAlpha(tint, 0.55)}
+            style={[styles.title, styles.previewTitle]}
+          />
         </View>
       ) : null}
     </View>
@@ -130,14 +146,14 @@ export function ChapterSection({ chapter, story, eyebrow, next, minHeight, pageO
 const useStyles = makeStyles((colors) => ({
   section: {
     width: "100%", maxWidth: READER_MAX_W, alignSelf: "center",
-    paddingHorizontal: spacing.xl, paddingTop: spacing.xxl + spacing.md, paddingBottom: spacing.xl,
-    gap: spacing.sm + 2,
+    paddingHorizontal: spacing.xl, paddingTop: NORMAL_PAD.top, paddingBottom: NORMAL_PAD.bottom,
+    gap: SECTION_GAP,
   },
   bigNumber: {
     position: "absolute", top: -spacing.lg, left: -4,
     fontFamily: typography.displayBold, fontSize: 96, lineHeight: 100, letterSpacing: -4,
   },
-  divider: { alignItems: "center", marginBottom: spacing.lg },
+  divider: { alignItems: "center", marginBottom: spacing.md },
   dividerLine: { width: "62%", height: 1, borderRadius: 1 },
   eyebrow: { fontFamily: typography.bodyBold, fontSize: 12, letterSpacing: 3, paddingTop: spacing.xxl, marginBottom: spacing.sm + 2 },
   title: {
@@ -146,13 +162,17 @@ const useStyles = makeStyles((colors) => ({
   content: { gap: spacing.sm + 2 },
   body: { gap: spacing.md + 2, marginTop: spacing.sm },
   // Anticipazione del capitolo seguente: sul fondo della schermata, attenuata.
-  preview: { marginTop: "auto", paddingTop: spacing.xl },
-  previewHead: { paddingTop: spacing.md },
-  previewNumber: {
-    position: "absolute", top: -spacing.md, left: -3,
-    fontFamily: typography.displayBold, fontSize: 72, lineHeight: 76, letterSpacing: -3,
-  },
-  previewEyebrow: { paddingTop: spacing.lg, marginBottom: spacing.xs },
-  previewTitle: { fontSize: 26, lineHeight: 31, opacity: 0.5 },
+  preview: { marginTop: "auto", paddingTop: spacing.lg },
+  previewEyebrow: { paddingTop: 0, marginBottom: spacing.xs },
+  previewTitle: { fontSize: 22, lineHeight: 27, opacity: 0.5 },
   paragraph: { color: colors.textWarmSecondary, fontFamily: typography.body, fontSize: 17.5, lineHeight: 31, letterSpacing: 0.1 },
+  // Versione compatta (capitolo che sfora di poco la schermata): stessi
+  // elementi, spazi e interlinea ridotti, così resta su una schermata sola.
+  sectionTight: { paddingTop: TIGHT_PAD.top, paddingBottom: TIGHT_PAD.bottom },
+  bigNumberTight: { top: -spacing.md, fontSize: 76, lineHeight: 80, letterSpacing: -3 },
+  eyebrowTight: { paddingTop: spacing.md, marginBottom: spacing.sm },
+  titleTight: { fontSize: 28, lineHeight: 33 },
+  bodyTight: { gap: spacing.sm + 2, marginTop: spacing.xs },
+  paragraphTight: { fontSize: 16.5, lineHeight: 27 },
+  previewTight: { paddingTop: spacing.sm + 2 },
 }));

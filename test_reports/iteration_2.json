@@ -1,0 +1,29 @@
+{
+  "summary": "Retest of the MEDIUM initial-snap regression from iteration_1 (deep-dive reader) on the Expo web preview. On BOTH 390x844 and 360x720 the initial ?start=1 snap now lands exactly on offsetTop(chapter-1) - 56 with delta=0 (390x844: scrollTop=788, expected=788; 360x720: scrollTop=703, expected=703). The scroll node has the required inline style overflow-anchor: none on both viewports. All chapter sections are exactly one screen tall (winH-64: 780px @844 and 656px @720). Regression on wheel navigation is clean at both viewports: 3 forward ticks (1.3s apart) advance header 01/06 -> 02/06 -> 03/06 -> 04/06 with scrollTop matching offsetTop(chN)-56 exactly (delta=0), and one back tick returns to 03/06 with delta=0. Compact 'CHAPTER 0N' preview visible at the bottom of every chapter screen and no big watermark bleed into the previews on either viewport (confirmed visually via screenshots). No new console errors; the same pre-existing RN-Web warnings from iteration_1 are still emitted (textShadow*, props.pointerEvents, Reanimated easing).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "styles using textShadow* props", "issue": "Console warning still present: '\"textShadow*\" style props are deprecated. Use \"textShadow\".' Reference: /app/frontend/src/components/category-grid.tsx:149,153 (unchanged from iteration_1)"},
+      {"component": "props.pointerEvents", "issue": "Console warning still present: 'props.pointerEvents is deprecated. Use style.pointerEvents' (React Native Web). Reference: /app/frontend/src/components/reader-section.tsx:48,110 (unchanged from iteration_1)"},
+      {"component": "reanimated easing on web", "issue": "Console warning still present: '[Reanimated] Selected easing is not currently supported on web. Using linear easing instead.' Reference: /app/frontend/src/components/category-grid.tsx:41 (unchanged from iteration_1)"}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Retest of MEDIUM initial-snap issue on 390x844: PASSED. No further action required for this regression.",
+    "Optional (carry-over from iteration_1, non-blocking): migrate textShadow* -> textShadow style, move pointerEvents from prop to style, and switch category-grid FadeInUp easing to a web-supported easing."
+  ],
+  "critical_code_review_comments": [
+    "Fix approach verified in place at /app/frontend/app/deep-dive/[id].tsx (recomputeTops re-snap + inline overflow-anchor: none on the scroll node). Both viewports now converge on the correct chapter-1 target after intro measurement."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100% for the requested checks (initial snap ±3 tolerance on both viewports, wheel forward x3 + back x1, section heights = winH-64, compact previews, overflow-anchor:none)"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Deep-dive per-chapter snap is stable on the web preview at 390x844 and 360x720. When retesting from the same browser context, clear localStorage/sessionStorage before opening /deep-dive/sky-blue-sunset-orange?start=1 to avoid the reader resuming at a saved chapter (touched state persists reading progress once wheel-step is invoked).",
+  "rca_of_issue": "Iteration_1 root cause (recomputeTops re-snap only firing when tops changed) is no longer reproducible: on 390x844 the initial jumpTo(1) now lands at 788 (offsetTop 844 - headerBottom 64 + spacing.sm 8) matching the target exactly; the scroll node also carries inline overflowAnchor='none' preventing Chrome scroll-anchoring from nudging the position after intro re-measure."
+}

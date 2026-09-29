@@ -158,30 +158,60 @@ export default function DeepDive() {
   const touchedSV = useSharedValue(false);
   const markTouched = () => { touchedRef.current = true; touchedSV.value = true; };
 
-  // Inizio di ogni sezione nello scroll (capitoli, poi la fine), misurato a layout.
+  // Inizio di ogni sezione nello scroll (capitoli, poi la fine). Si ricava
+  // dalle altezze (apertura + sezioni in colonna, senza spazi), non dalla
+  // posizione a layout: sul web `onLayout` scatta solo quando cambia la
+  // dimensione, quindi la posizione delle sezioni seguenti resterebbe vecchia
+  // quando un capitolo cresce (es. quando si misura la sua anticipazione).
   const topsRef = useRef<number[]>([]);
   const topsSV = useSharedValue<number[]>([]);
   const endTopSV = useSharedValue(0);
+  const introHRef = useRef(0);
+  const heightsRef = useRef<number[]>([]);
   const pendingSection = useRef<{ index: number; animated: boolean } | null>(null);
+  const lastJumpRef = useRef(0);
   const jumpTo = useCallback((index: number, animated: boolean) => {
     const tops = topsRef.current;
     const target = index <= 0 ? 0 : index > tops.length ? -1 : Math.max(0, tops[index - 1] - headerBottom + spacing.sm);
     if (target < 0 || !Number.isFinite(target)) return false;
+    lastJumpRef.current = index;
     autoY.value = target;
     scrollRef.current?.scrollTo({ y: target, animated });
     return true;
   }, [headerBottom, scrollRef, autoY]);
-  const onSectionLayout = (index: number, e: LayoutChangeEvent) => {
-    const y = Math.round(e.nativeEvent.layout.y);
-    const tops = topsRef.current.slice();
-    if (tops[index] === y) return;
-    tops[index] = y;
+  const coverTopRef = useRef(cover.top);
+  coverTopRef.current = cover.top;
+  const recomputeTops = useCallback(() => {
+    if (introHRef.current <= 0) return;
+    const heights = heightsRef.current;
+    const tops: number[] = [];
+    let y = coverTopRef.current + introHRef.current;
+    // Solo le sezioni consecutive già misurate: dopo un buco la quota non è nota.
+    for (let i = 0; i < heights.length && heights[i] > 0; i++) { tops.push(Math.round(y)); y += heights[i]; }
+    const prev = topsRef.current;
+    if (tops.length === prev.length && tops.every((v, i) => v === prev[i])) return;
     topsRef.current = tops;
     topsSV.value = tops;
-    if (index === chapterCount) endTopSV.value = Math.max(0, y - headerBottom);
+    if (tops.length > chapterCount) endTopSV.value = Math.max(0, tops[chapterCount] - headerBottom);
     const pending = pendingSection.current;
-    if (pending && pending.index - 1 <= index && jumpTo(pending.index, pending.animated)) pendingSection.current = null;
+    if (pending && pending.index <= tops.length && jumpTo(pending.index, pending.animated)) pendingSection.current = null;
+    // Le quote sono cambiate prima di ogni gesto del lettore (es. capitolo che
+    // cresce dopo la misura): la pagina resta allineata alla sezione di apertura.
+    else if (!pending && !touchedRef.current && lastJumpRef.current > 0) jumpTo(lastJumpRef.current, false);
+  }, [chapterCount, headerBottom, topsSV, endTopSV, jumpTo]);
+  const onIntroLayout = (h: number) => {
+    setIntroMeasured(true);
+    if (h !== introHRef.current) { introHRef.current = h; recomputeTops(); }
   };
+  const onSectionLayout = (index: number, e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height);
+    if (heightsRef.current[index] === h) return;
+    const heights = heightsRef.current.slice();
+    heights[index] = h;
+    heightsRef.current = heights;
+    recomputeTops();
+  };
+  useEffect(() => { recomputeTops(); }, [cover.top, recomputeTops]);
   const scrollToSection = useCallback((i: number, animated = true) => {
     if (!jumpTo(i, animated)) pendingSection.current = { index: i, animated };
   }, [jumpTo]);
@@ -245,9 +275,13 @@ export default function DeepDive() {
       }
     });
   // Web con mouse: la rotellina avanza/arretra di un capitolo per "colpo".
+  // Lo "scroll anchoring" del browser viene spento: quando una sezione cambia
+  // altezza dopo la misura, Chrome sposterebbe la pagina di qualche riga da solo.
   const wrapRef = useRef<View>(null);
   useEffect(() => {
     if (Platform.OS !== "web") return;
+    const scrollNode = (scrollRef.current as unknown as { getScrollableNode?: () => HTMLElement } | null)?.getScrollableNode?.();
+    if (scrollNode?.style) scrollNode.style.overflowAnchor = "none";
     const node = wrapRef.current as unknown as HTMLElement | null;
     if (!node?.addEventListener) return;
     let acc = 0, lockUntil = 0;
@@ -478,7 +512,7 @@ export default function DeepDive() {
               scorrere in fondo alla prima schermata. */}
           <ReaderIntro story={story} coverH={cover.reserve} minHeight={pageH - cover.top} bottomInset={insets.bottom} reveal={headerReveal}
             listen={isPremium ? <IntroListenButton onListen={openAudio} style={styles.listen} /> : null}
-            onLayout={() => setIntroMeasured(true)} />
+            onLayout={onIntroLayout} />
 
           {chaptersReady ? story.chapters.map((c, i) => (
             <View key={c.number} onLayout={(e) => onSectionLayout(i, e)} testID={`deep-dive-page-chapter-${c.number}`}>
