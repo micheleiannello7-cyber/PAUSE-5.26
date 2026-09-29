@@ -104,8 +104,10 @@ export function StoryMorph({ story, from: fromProp, premium, ready, onCommit, di
   const still = useSharedValue(0);
 
   // Stessa geometria dell'apertura del lettore (deep-dive/[id]): copertina a
-  // tutta larghezza dall'alto, dimensione fissa (non dipende da misure della scheda).
-  const cover = readerCoverFrame(winW, winH);
+  // tutta larghezza dall'alto; si abbassa come nel lettore quando l'apertura
+  // misura il testo (stesso `onFit`), così le due schermate restano identiche.
+  const [reserveCap, setReserveCap] = useState<number | null>(null);
+  const cover = readerCoverFrame(winW, winH, reserveCap);
   const coverTop = cover.top;
   const cardW = cover.width;
   const cardH = cover.height;
@@ -141,7 +143,7 @@ export function StoryMorph({ story, from: fromProp, premium, ready, onCommit, di
   const coverShift = { x: from.x + from.width / 2 - (to.x + to.width / 2), y: from.y + from.height / 2 - (to.y + to.height / 2) };
   const coverScale = { x: from.width / to.width, y: from.height / to.height };
 
-  const measured = sheetMeasured && titleTo?.forCardH === cardH && gridTo?.forCardH === cardH && cardTitleH > 0;
+  const measured = sheetMeasured && reserveCap != null && titleTo?.forCardH === cardH && gridTo?.forCardH === cardH && cardTitleH > 0;
   const [animDone, setAnimDone] = useState(false);
   // La storia in cache non provoca ri-render a metà corsa (su nativo un
   // ri-render riapplica gli stili delle viste animate): si annota in un ref e
@@ -310,7 +312,7 @@ export function StoryMorph({ story, from: fromProp, premium, ready, onCommit, di
       <View style={[styles.page, { width: winW, height: winH, paddingTop: coverTop }]} pointerEvents="none">
         <ReaderIntro story={story} coverH={cover.reserve} minHeight={winH - coverTop} bottomInset={insets.bottom} reveal={still} prefix="story-morph"
           ghost={floatingReady} partsStyle={partsStyle}
-          onLayout={() => setSheetMeasured(true)} remeasure={cardH} onTitleRect={acceptTitle} onGridRect={acceptGrid} />
+          onLayout={() => setSheetMeasured(true)} onFit={setReserveCap} remeasure={cardH} onTitleRect={acceptTitle} onGridRect={acceptGrid} />
       </View>
 
       {/* Copertina: ferma al suo posto, cresce fino alla cornice del lettore (a tutta larghezza). */}

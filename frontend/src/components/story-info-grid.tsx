@@ -51,9 +51,9 @@ export function StoryInfoGrid({ story, minutes, inline = false, testID = "story-
               testID={`${testID}-divider-${index}`}
             />
           )}
-          <View style={styles.cell} testID={`${testID}-${c.id}`}>
+          <View style={[styles.cell, c.id === "category" ? styles.cellGrow : styles.cellFixed]} testID={`${testID}-${c.id}`}>
             <View style={styles.iconWrap}>{c.icon}</View>
-            <Text style={[styles.value, c.id !== "time" && styles.uppercase]} numberOfLines={2} testID={`${testID}-${c.id}-value`}>{c.value}</Text>
+            <Text style={[styles.value, c.id !== "time" && styles.uppercase, c.id === "kind" && styles.kindValue]} numberOfLines={2} testID={`${testID}-${c.id}-value`}>{c.value}</Text>
           </View>
         </Fragment>
       ))}
@@ -68,15 +68,25 @@ const useStyles = makeStyles((colors) => ({
     backgroundColor: withAlpha(colors.surfaceDeep, 0.78), borderWidth: 1,
     borderColor: withAlpha(colors.intro, 0.22),
   },
-  gridInline: { backgroundColor: "transparent", borderWidth: 0, borderRadius: 0, paddingHorizontal: 0, paddingVertical: 4, minHeight: 44 },
-  cell: {
-    flex: 1, minWidth: 0, flexDirection: "row", paddingHorizontal: 5, gap: 5,
-    alignItems: "center", justifyContent: "center",
+  // Lettura: contenitore "vetro" che racchiude i tre dati (i soli separatori
+  // non bastavano a tenerli insieme sopra alla copertina).
+  gridInline: {
+    alignSelf: "stretch", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 8, minHeight: 54,
+    backgroundColor: withAlpha(colors.surfaceDeep, 0.58), borderWidth: 1, borderColor: withAlpha(colors.brand, 0.26),
+    boxShadow: `inset 0px 0px 22px ${withAlpha(colors.brand, 0.08)}, 0px 6px 22px ${withAlpha(colors.surfaceDeep, 0.5)}` as any,
   },
+  // Tipo e durata occupano solo lo spazio del loro contenuto; la categoria (il
+  // nome più lungo e variabile) prende tutto il resto e va su due righe: così
+  // icone e scritte non si sovrappongono mai, qualunque combinazione.
+  cell: { flexDirection: "row", paddingHorizontal: 5, gap: 5, alignItems: "center", justifyContent: "center" },
+  cellFixed: { flexGrow: 0, flexShrink: 0 },
+  cellGrow: { flex: 1, minWidth: 0 },
   divider: { width: 1, height: 28 },
   iconWrap: { width: ICON + 8, height: ICON + 8, flexShrink: 0, alignItems: "center", justifyContent: "center" },
   clock: { width: ICON + 2, height: ICON + 2 },
   // Solo i valori lunghi vanno su due righe: la barra resta unica anche su telefoni piccoli.
   value: { flexShrink: 1, color: colors.textWarm, fontFamily: typography.bodyMedium, fontSize: 11, lineHeight: 15, textAlign: "left" },
+  // "MINI LEZIONE" va su due righe (MINI / LEZIONE), "CURIOSITÀ" resta su una.
+  kindValue: { maxWidth: 74 },
   uppercase: { textTransform: "uppercase", letterSpacing: 0.15 },
 }));

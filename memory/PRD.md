@@ -362,3 +362,8 @@ Solo presentazione (nessuna modifica backend/contenuti):
 - `backend/v9_topics.py` rivisto dopo analisi dei 430 titoli: 63 nuovi argomenti (target 40/categoria).
 - Run 1: 11 prodotti (cultura 33, economia 32, arte 32, geografia 32, corpo-umano 33) poi credito esaurito.
 - Restano 52 (51 senza testo + "oro vs rame" con testo senza copertina). Riprendere: `cd /app/backend && nohup python produce_v9.py > ../memory/v9_production_2.stdout 2>&1 &`
+
+## 2026-09-29 — Apertura lettore
+- Titolo copertina −30% (24/22/20/18 px); griglia info in contenitore vetro con celle a misura (tipo/durata fisse, categoria elastica): mai sovrapposizioni.
+- Copertina dinamica: `readerCoverFrame(winW, pageH, reserveCap)` con `ReaderIntro.onFit` (misura titolo+dati+intro+invito) → l'introduzione è sempre leggibile per intero nella prima schermata (min copertina 200px). Condiviso con story-morph.
+- ESPLORA: accento bianco ghiaccio (#EAF7FF) quando selezionata.

@@ -137,7 +137,10 @@ export default function DeepDive() {
   // Grande copertina dell'apertura: a tutta larghezza dall'alto (dietro la
   // barra), sfuma in basso nell'atmosfera. Lo stesso livello fisso dietro allo
   // scroll (ReaderCoverBackdrop) ha questa geometria e resta come traccia scura.
-  const cover = readerCoverFrame(winW, pageH);
+  // Si abbassa quanto serve (misura dell'apertura) perché titolo, dati e
+  // introduzione siano leggibili per intero nella prima schermata.
+  const [reserveCap, setReserveCap] = useState<number | null>(null);
+  const cover = readerCoverFrame(winW, pageH, reserveCap);
   const [introMeasured, setIntroMeasured] = useState(false);
   // Arrivo dalla card della Home: dopo il primo layout dell'apertura la
   // geometria è quella definitiva ed è stata disegnata → il livello di
@@ -512,7 +515,7 @@ export default function DeepDive() {
               scorrere in fondo alla prima schermata. */}
           <ReaderIntro story={story} coverH={cover.reserve} minHeight={pageH - cover.top} bottomInset={insets.bottom} reveal={headerReveal}
             listen={isPremium ? <IntroListenButton onListen={openAudio} style={styles.listen} /> : null}
-            onLayout={onIntroLayout} />
+            onLayout={onIntroLayout} onFit={setReserveCap} />
 
           {chaptersReady ? story.chapters.map((c, i) => (
             <View key={c.number} onLayout={(e) => onSectionLayout(i, e)} testID={`deep-dive-page-chapter-${c.number}`}>
